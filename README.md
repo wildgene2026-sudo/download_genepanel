@@ -4,6 +4,12 @@ Reference Bridge is the companion downloader for `PDF to HPO offline`. It
 collects public reference data only and never accepts PDFs, OCR text, HPO case
 terms, or patient identifiers.
 
+## Live website
+
+Use the hosted downloader at [Reference Bridge](https://reference-bridge-hpo-panelapp.algene2026.chatgpt.site/).
+GitHub Pages cannot run this application's download API routes, so the full
+working downloader is hosted there while this repository contains the source.
+
 ## Downloads
 
 - The latest official HPO `hp.obo`, checked against the release SHA-256 and the
