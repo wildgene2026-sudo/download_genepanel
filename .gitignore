@@ -43,5 +43,9 @@ next-env.d.ts
 /.artifact-inspect/
 /.validation-panelapp40/
 /.validation-panelapp-full/
+/.venv-flask/
+/flask_app/data/
+**/__pycache__/
+*.py[cod]
 /scripts/node_modules
 *.tsbuildinfo

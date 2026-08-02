@@ -44,3 +44,39 @@ npm run lint
 npm run typecheck
 npm test
 ```
+
+## Simple Flask installation
+
+The Flask edition runs alongside the existing app and preserves the same HPO
+verification, PanelApp filtering, workbook naming, request pacing, retries, and
+all-or-nothing bundle behavior.
+
+Requirements: Python 3.10 or newer and an internet connection.
+
+On macOS or Linux, double-click `start_flask.command` or run:
+
+```bash
+./start_flask.command
+```
+
+On Windows, double-click `start_flask.bat`.
+
+The first start creates an isolated Python environment and installs Flask
+automatically. The webpage opens at <http://127.0.0.1:5000>. Stop it by closing
+the command window or pressing `Control+C`.
+
+For access from other computers on the same trusted local network, start with
+`./start_flask.command --lan` on macOS/Linux or `start_flask.bat --lan` on
+Windows, then allow port 5000 through the computer firewall. Do not expose the
+Flask server directly to the public internet; place it behind an HTTPS reverse
+proxy if public access is required.
+
+Flask tests after the first start:
+
+```bash
+# macOS or Linux
+.venv-flask/bin/python -m unittest discover -s flask_app/tests -v
+
+# Windows
+.venv-flask\Scripts\python.exe -m unittest discover -s flask_app/tests -v
+```

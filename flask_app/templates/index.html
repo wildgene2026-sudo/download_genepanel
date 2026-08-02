@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Download verified HPO and green PanelApp reference bundles for PDF to HPO offline.">
+  <title>Reference Bridge · Flask</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <script src="{{ url_for('static', filename='app.js') }}" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="#top" aria-label="Reference Bridge home"><span class="brand-mark">RB</span><span>Reference Bridge</span></a>
+    <div class="topbar-meta"><span class="live-dot" aria-hidden="true"></span><span id="catalog-status">Checking official sources…</span></div>
+  </header>
+
+  <main id="top">
+    <section class="hero">
+      <div class="hero-copy">
+        <span class="eyebrow">FLASK EDITION · COMPANION FOR PDF TO HPO OFFLINE</span>
+        <h1>Fresh reference data.<br><em>Zero patient data.</em></h1>
+        <p class="lede">Download the official HPO ontology and every current green PanelApp panel from the UK and Australia—directly from your own computer.</p>
+        <div class="hero-actions">
+          <button class="primary-button" type="button" data-job="complete" disabled>Build complete offline pack <span>→</span></button>
+          <a class="text-link" href="#downloads">Choose individual downloads</a>
+        </div>
+        <p class="privacy-note"><span>✓</span><strong>No PDF upload.</strong> This local server handles public reference files only—never scans, OCR text, HPO case terms, or identifiers.</p>
+      </div>
+      <aside class="contract-card" aria-label="Reference contract summary">
+        <div class="contract-title"><span>Verified reference contract</span><small>LOCAL FLASK SERVER</small></div>
+        <div class="stats">
+          <div><strong id="uk-count">—</strong><span>UK panels</span></div>
+          <div><strong id="au-count">—</strong><span>Australia panels</span></div>
+          <div><strong>36</strong><span>exact columns</span></div>
+        </div>
+        <ol class="contract-list">
+          <li><span>01</span><p><strong>Green means GEL 3 or 4</strong><br>No amber, red, or grey rows enter a bundle.</p></li>
+          <li><span>02</span><p><strong>Genes, STRs, and regions</strong><br>All required genomic entity types are retained.</p></li>
+          <li><span>03</span><p><strong>Safe shared queue</strong><br>One bundle at a time with caching, cooldowns, and retries.</p></li>
+        </ol>
+      </aside>
+    </section>
+
+    <section class="downloads" id="downloads">
+      <div class="section-heading">
+        <div><span class="eyebrow light">INDIVIDUAL DOWNLOADS</span><h2>Take only what you need</h2></div>
+        <p>Each PanelApp bundle is all-or-nothing. If a panel cannot be verified, no partial archive is offered.</p>
+      </div>
+      <div class="download-grid">
+        <article class="download-card hpo-card">
+          <div class="card-top"><span>01</span><small>.OBO</small></div>
+          <h3>HPO ontology</h3>
+          <p id="hpo-description">Checking the latest official release…</p>
+          <dl>
+            <div><dt>Latest release</dt><dd id="hpo-release">—</dd></div>
+            <div><dt>Published</dt><dd id="hpo-date">—</dd></div>
+            <div><dt>Size</dt><dd id="hpo-size">—</dd></div>
+          </dl>
+          <a class="card-button disabled" id="hpo-download" href="/api/hpo" aria-disabled="true">Download hp.obo <span>→</span></a>
+        </article>
+        <article class="download-card uk-card">
+          <div class="card-top"><span>02</span><small>.ZIP</small></div>
+          <h3>PanelApp UK</h3>
+          <p>Every Genomics England panel, each saved as a green-only 36-column Excel workbook.</p>
+          <dl>
+            <div><dt>Current panels</dt><dd id="uk-card-count">—</dd></div>
+            <div><dt>Filename prefix</dt><dd>Panel name</dd></div>
+            <div><dt>Entity types</dt><dd>3 included</dd></div>
+          </dl>
+          <button class="card-button" type="button" data-job="uk" disabled>Download UK bundle <span>→</span></button>
+        </article>
+        <article class="download-card au-card">
+          <div class="card-top"><span>03</span><small>.ZIP</small></div>
+          <h3>PanelApp Australia</h3>
+          <p>Every Australian panel with the required <code>AUSTRALIA.</code> prefix and current source version.</p>
+          <dl>
+            <div><dt>Current panels</dt><dd id="au-card-count">—</dd></div>
+            <div><dt>Filename prefix</dt><dd>AUSTRALIA.</dd></div>
+            <div><dt>Entity types</dt><dd>3 included</dd></div>
+          </dl>
+          <button class="card-button" type="button" data-job="au" disabled>Download Australia bundle <span>→</span></button>
+        </article>
+      </div>
+    </section>
+
+    <section class="handoff">
+      <div class="section-heading dark-heading">
+        <div><span class="eyebrow">THREE-MINUTE HANDOFF</span><h2>Use the complete pack</h2></div>
+        <p>The output keeps HPO and PanelApp separate, matching the offline app’s import design.</p>
+      </div>
+      <ol class="steps">
+        <li><span>1</span><div><strong>Extract the ZIP</strong><p>Keep the included HPO and PanelApp folders together.</p></div></li>
+        <li><span>2</span><div><strong>Load the ontology</strong><p>Choose “Load HPO ontology…” and select <code>HPO/hp.obo</code>.</p></div></li>
+        <li><span>3</span><div><strong>Choose the panels</strong><p>Set the extracted <code>PanelApp</code> folder as the local panel folder.</p></div></li>
+      </ol>
+    </section>
+  </main>
+
+  <section class="status-dock" id="status-dock" aria-live="polite" hidden>
+    <div class="status-copy"><span id="job-phase">Preparing</span><strong id="job-current">Preparing secure download…</strong><small id="job-counts">0 genes · 0 STRs · 0 regions</small></div>
+    <div class="progress-block"><div><span id="job-percent">0%</span><span id="job-position">0 / 1</span></div><div class="progress-track" role="progressbar" aria-label="Download progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span id="progress-fill"></span></div></div>
+    <button class="cancel-button" id="cancel-job" type="button">Cancel</button>
+  </section>
+
+  <footer><div><span class="brand-mark small">RB</span><strong>Reference Bridge · Flask</strong></div><p>Public reference data only · HPO + PanelApp UK + Australia</p><span id="footer-count">Catalogue checking</span></footer>
+</body>
+</html>
