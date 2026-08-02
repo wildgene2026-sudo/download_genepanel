@@ -11,6 +11,7 @@ import {
   yymmdd,
 } from "@/lib/panelapp";
 import { buildPanelWorkbook } from "@/lib/xlsx";
+import { fetchWithTimeout } from "@/lib/network";
 
 type Source = "UK" | "AU";
 type Panel = {
@@ -217,7 +218,6 @@ export default function Home() {
       "Regions",
       "Rejected non-green or unknown rows",
     ]];
-    const failures: string[] = [];
     let nextIndex = 0;
     let completed = 0;
     let aggregate = { ...EMPTY_COUNTS };
@@ -242,11 +242,13 @@ export default function Home() {
           if (index >= panels.length) return;
           const { source, panel } = panels[index];
           if (controller.signal.aborted) throw new DOMException("Cancelled", "AbortError");
+          let panelFailure: Error | null = null;
           try {
             setJob((current) => (current ? { ...current, current: `${source === "AU" ? "Australia" : "UK"} · ${panel.name}` } : current));
-            const response = await fetch(
+            const response = await fetchWithTimeout(
               `/api/panel-export?source=${encodeURIComponent(source)}&id=${encodeURIComponent(panel.id)}&version=${encodeURIComponent(panel.version)}`,
               { signal: controller.signal, cache: "force-cache" },
+              180_000,
             );
             if (!response.ok) throw new Error(await responseError(response));
             const exportText = await response.text();
@@ -271,27 +273,25 @@ export default function Home() {
             ]);
           } catch (reason) {
             if (reason instanceof DOMException && reason.name === "AbortError") throw reason;
-            failures.push(`${source} panel ${panel.id} (${panel.name}): ${reason instanceof Error ? reason.message : "unknown error"}`);
+            panelFailure = new Error(
+              `${source} panel ${panel.id} (${panel.name}) could not be verified: ${reason instanceof Error ? reason.message : "unknown error"}`,
+            );
           } finally {
             completed += 1;
             setJob((current) => (current ? { ...current, completed, counts: { ...aggregate } } : current));
-            if (index < panels.length - 1 && !controller.signal.aborted) {
+            if (!panelFailure && index < panels.length - 1 && !controller.signal.aborted) {
               setJob((current) =>
                 current ? { ...current, current: "Pacing requests to protect PanelApp access…" } : current,
               );
               await pause(PANEL_REQUEST_INTERVAL_MS, controller.signal);
             }
           }
+          if (panelFailure) throw panelFailure;
         }
       };
 
       await worker();
       if (controller.signal.aborted) throw new DOMException("Cancelled", "AbortError");
-      if (failures.length) {
-        throw new Error(
-          `${failures.length} panel${failures.length === 1 ? "" : "s"} could not be verified, so no partial bundle was saved. First problem: ${failures[0]}`,
-        );
-      }
 
       const stamp = yymmdd();
       const sourceSummary = sources.map((source) => `${source}: ${catalog.sources[source].length} panels`).join("; ");

@@ -159,3 +159,25 @@ Before the final rerun, the downloader was hardened to avoid creating high-frequ
 - Download cancellation interrupts both pacing and backoff waits. A failed or cancelled run still saves no partial bundle.
 
 These controls substantially reduce blocking risk and ensure polite recovery from throttling. No client can guarantee that a third-party service will never impose a block, so the fail-safe behavior is to wait or stop rather than increase request frequency.
+
+### Full UK bundle local-debug loop
+
+Observed symptom on 2026-08-02: the local UK bundle appeared frozen at 203/435 while requesting `Ichthyosis and erythrokeratoderma` (PanelApp UK panel 555, version 4.16). The official export itself returned HTTP 200 with 22,207 bytes in under two seconds when tested directly, and it also succeeded through a fresh local server.
+
+Root cause: the server used `AbortController.abort()` as its request timeout, but a temporarily stalled outbound fetch in the local worker runtime did not always settle its promise after the abort signal. That left the shared per-origin request gate occupied, so later PanelApp routes queued behind it indefinitely even though the website page itself remained responsive.
+
+Corrections:
+
+- Added a hard `Promise.race` deadline that both aborts the network request and independently rejects after 25 seconds, guaranteeing that the shared PanelApp gate is released.
+- Retained five paced retry attempts, so a single transient stall is retried before the panel is declared unavailable.
+- Added a three-minute browser-side deadline for each local proxy request.
+- Changed the bundle loop to stop immediately with the exact source, panel ID, and panel name after safe retries are exhausted instead of continuing hundreds of panels before reporting failure.
+- Added a regression test whose mock upstream deliberately ignores abort; the hard timeout still settles and releases control.
+
+Full 434-panel UK archive rerun: **PASS** on 2026-08-02.
+
+- 434/434 current UK panels exported successfully with the same paced, sequential path used by the website.
+- The previously stalled `Ichthyosis and erythrokeratoderma` panel completed with 62 green genes and 1 green genomic region.
+- Aggregate contents: 35,536 green gene rows, 220 green STR rows, and 478 green genomic-region rows.
+- The final 6,564,313-byte ZIP reopened successfully and contained exactly 434 `.xlsx` workbooks.
+- Peak observed resident memory was approximately 400 MB while processing the 6,683-row Paediatric disorders panel; memory was reclaimed during the run and the process completed normally.

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { fetchVerifiedHpo, listPanelAppPanels } from "../lib/remote.js";
+import { fetchWithTimeout } from "../lib/network.js";
 
 function jsonResponse(value, status = 200) {
   return new Response(JSON.stringify(value), {
@@ -93,6 +94,24 @@ test("stops instead of retrying before a long server-requested cooldown", async 
       /cooldown is active/i,
     );
     assert.equal(attempts, 1);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("hard timeout settles even when an upstream fetch ignores abort", async () => {
+  const originalFetch = globalThis.fetch;
+  let observedSignal;
+  try {
+    globalThis.fetch = async (_url, init) => {
+      observedSignal = init.signal;
+      return new Promise(() => {});
+    };
+    await assert.rejects(
+      () => fetchWithTimeout("https://example.test/stuck", {}, 5),
+      /timed out/i,
+    );
+    assert.equal(observedSignal.aborted, true);
   } finally {
     globalThis.fetch = originalFetch;
   }

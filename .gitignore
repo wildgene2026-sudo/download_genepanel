@@ -42,5 +42,6 @@ next-env.d.ts
 /work/
 /.artifact-inspect/
 /.validation-panelapp40/
+/.validation-panelapp-full/
 /scripts/node_modules
 *.tsbuildinfo
