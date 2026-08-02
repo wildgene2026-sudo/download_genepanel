@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
     return new Response(text, {
       headers: {
         "Content-Type": "text/tab-separated-values; charset=utf-8",
-        "Cache-Control": "public, max-age=900, s-maxage=3600, stale-while-revalidate=86400",
+        "Cache-Control": "public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800",
         "X-Content-Type-Options": "nosniff",
         "X-PanelApp-Source": source,
         "X-PanelApp-Version": version,

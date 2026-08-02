@@ -22,7 +22,7 @@ test("requires the complete PanelApp count across pagination", async () => {
             results: [{ id: 1, name: "Alpha", version: 1.1, status: "public", stats: {} }],
           });
     };
-    const panels = await listPanelAppPanels("UK");
+    const panels = await listPanelAppPanels("UK", { minimumIntervalMs: 0 });
     assert.deepEqual(panels.map((panel) => panel.id), [1, 2]);
 
     globalThis.fetch = async () => jsonResponse({
@@ -30,7 +30,69 @@ test("requires the complete PanelApp count across pagination", async () => {
       next: null,
       results: [{ id: 1, name: "Alpha", version: 1.1, status: "public", stats: {} }],
     });
-    await assert.rejects(() => listPanelAppPanels("UK"), /incomplete/i);
+    await assert.rejects(() => listPanelAppPanels("UK", { minimumIntervalMs: 0 }), /incomplete/i);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("backs off after a rate-limit response before retrying", async () => {
+  const originalFetch = globalThis.fetch;
+  let attempts = 0;
+  try {
+    globalThis.fetch = async () => {
+      attempts += 1;
+      return attempts === 1
+        ? new Response("slow down", { status: 429, headers: { "Retry-After": "0.001" } })
+        : jsonResponse({ count: 1, next: null, results: [{ id: 1, name: "Alpha", version: 1.1, status: "public", stats: {} }] });
+    };
+    const panels = await listPanelAppPanels("UK", { minimumIntervalMs: 0 });
+    assert.equal(attempts, 2);
+    assert.equal(panels.length, 1);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("serializes simultaneous PanelApp requests from the same runtime", async () => {
+  const originalFetch = globalThis.fetch;
+  let active = 0;
+  let maximumActive = 0;
+  try {
+    globalThis.fetch = async () => {
+      active += 1;
+      maximumActive = Math.max(maximumActive, active);
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      active -= 1;
+      return jsonResponse({ count: 1, next: null, results: [{ id: 1, name: "Alpha", version: 1.1, status: "public", stats: {} }] });
+    };
+    await Promise.all([
+      listPanelAppPanels("UK", { minimumIntervalMs: 5 }),
+      listPanelAppPanels("UK", { minimumIntervalMs: 5 }),
+    ]);
+    assert.equal(maximumActive, 1);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("stops instead of retrying before a long server-requested cooldown", async () => {
+  const originalFetch = globalThis.fetch;
+  let attempts = 0;
+  try {
+    globalThis.fetch = async () => {
+      attempts += 1;
+      return new Response("slow down", { status: 429, headers: { "Retry-After": "600" } });
+    };
+    await assert.rejects(
+      () => listPanelAppPanels("UK", { minimumIntervalMs: 5 }),
+      /cooldown longer than five minutes/i,
+    );
+    await assert.rejects(
+      () => listPanelAppPanels("UK", { minimumIntervalMs: 5 }),
+      /cooldown is active/i,
+    );
+    assert.equal(attempts, 1);
   } finally {
     globalThis.fetch = originalFetch;
   }

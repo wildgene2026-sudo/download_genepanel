@@ -24,7 +24,7 @@ test("server-renders the finished reference downloader", async () => {
   assert.match(html, /Build complete offline pack/);
   assert.match(html, /PanelApp UK/);
   assert.match(html, /PanelApp Australia/);
+  assert.match(html, /Requests run one at a time with automatic cooldown and retry handling/);
   assert.match(html, /Download hp\.obo/);
   assert.doesNotMatch(html, /codex-preview|Your site is taking shape|react-loading-skeleton/i);
 });
-

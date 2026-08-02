@@ -37,6 +37,23 @@ type Job = {
 };
 
 const EMPTY_COUNTS: EntityCounts = { gene: 0, str: 0, region: 0 };
+const PANEL_REQUEST_INTERVAL_MS = 1_000;
+
+function pause(milliseconds: number, signal: AbortSignal) {
+  if (signal.aborted) return Promise.reject(signal.reason ?? new DOMException("Cancelled", "AbortError"));
+  return new Promise<void>((resolve, reject) => {
+    const onAbort = () => {
+      window.clearTimeout(timer);
+      signal.removeEventListener("abort", onAbort);
+      reject(signal.reason ?? new DOMException("Cancelled", "AbortError"));
+    };
+    const timer = window.setTimeout(() => {
+      signal.removeEventListener("abort", onAbort);
+      resolve();
+    }, milliseconds);
+    signal.addEventListener("abort", onAbort, { once: true });
+  });
+}
 
 function formatBytes(bytes: number) {
   if (!Number.isFinite(bytes) || bytes <= 0) return "—";
@@ -229,7 +246,7 @@ export default function Home() {
             setJob((current) => (current ? { ...current, current: `${source === "AU" ? "Australia" : "UK"} · ${panel.name}` } : current));
             const response = await fetch(
               `/api/panel-export?source=${encodeURIComponent(source)}&id=${encodeURIComponent(panel.id)}&version=${encodeURIComponent(panel.version)}`,
-              { signal: controller.signal },
+              { signal: controller.signal, cache: "force-cache" },
             );
             if (!response.ok) throw new Error(await responseError(response));
             const exportText = await response.text();
@@ -258,11 +275,17 @@ export default function Home() {
           } finally {
             completed += 1;
             setJob((current) => (current ? { ...current, completed, counts: { ...aggregate } } : current));
+            if (index < panels.length - 1 && !controller.signal.aborted) {
+              setJob((current) =>
+                current ? { ...current, current: "Pacing requests to protect PanelApp access…" } : current,
+              );
+              await pause(PANEL_REQUEST_INTERVAL_MS, controller.signal);
+            }
           }
         }
       };
 
-      await Promise.all(Array.from({ length: Math.min(4, panels.length) }, () => worker()));
+      await worker();
       if (controller.signal.aborted) throw new DOMException("Cancelled", "AbortError");
       if (failures.length) {
         throw new Error(
@@ -423,7 +446,7 @@ export default function Home() {
             <span className="eyebrow">INDIVIDUAL DOWNLOADS</span>
             <h2>Take only what you need</h2>
           </div>
-          <p>Each PanelApp bundle is all-or-nothing: if one panel fails validation, no misleading partial ZIP is saved.</p>
+          <p>Each PanelApp bundle is all-or-nothing. Requests run one at a time with automatic cooldown and retry handling, so large downloads do not create a burst against PanelApp.</p>
         </div>
         <div className="downloadGrid">
           <article className="downloadCard hpoCard">
